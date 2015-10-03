@@ -19,17 +19,33 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
+
+#ifdef _MSC_VER
 #include <tchar.h>
+#define PRIu_size_t "Iu"
+#endif
+
+#ifdef __GNUC__
+#define _TCHAR char
+#define _T(x) (x)
+#define _tcslen strlen
+#define _tprintf printf
+#define _ftprintf fprintf
+#define _tfopen fopen
+#define _tmain main
+#define PRIu_size_t "zu"
+#endif
 
 #include "GetBootmanagerVersion.h"
-#include "ms-compression\compression.h"
+#include "ms-compression/compression.h"
 
 typedef unsigned char byte;
 typedef byte* bytes;
 typedef const byte const_byte;
 typedef const_byte* const_bytes;
 
-static bytes read_all(const TCHAR* filepath, size_t* size)
+static bytes read_all(const _TCHAR* filepath, size_t* size)
 {
 	size_t l, len;
 	bytes b, b0;
@@ -42,7 +58,7 @@ static bytes read_all(const TCHAR* filepath, size_t* size)
 	return b0;
 }
 
-static int write_all(const TCHAR* filepath, bytes b, size_t size)
+static int write_all(const _TCHAR* filepath, bytes b, size_t size)
 {
 	size_t l;
 	FILE* f = _tfopen(filepath, _T("wb"));
@@ -54,7 +70,7 @@ static int write_all(const TCHAR* filepath, bytes b, size_t size)
 	return 1;
 }
 
-static int append_all(const TCHAR* filepath, bytes b, size_t size)
+static int append_all(const _TCHAR* filepath, bytes b, size_t size)
 {
 	size_t l;
 	FILE* f = _tfopen(filepath, _T("ab"));
@@ -103,7 +119,7 @@ static CompressionFormat get_format(BM_DATA* bm_data)
 	return (CompressionFormat)-1;
 }
 
-static int bm_decomp(const TCHAR* in_file, const TCHAR* out_file)
+static int bm_decomp(const _TCHAR* in_file, const _TCHAR* out_file)
 {
 	size_t in_size, out_size;
 	bytes in, out;
@@ -121,7 +137,7 @@ static int bm_decomp(const TCHAR* in_file, const TCHAR* out_file)
 	return 0;
 }
 
-static int bm_comp(const TCHAR* in_file, const TCHAR* out_file)
+static int bm_comp(const _TCHAR* in_file, const _TCHAR* out_file)
 {
 	size_t in_size, out_size;
 	bytes in, out, out_data;
@@ -132,7 +148,7 @@ static int bm_comp(const TCHAR* in_file, const TCHAR* out_file)
 	if ((bm_data = find_bm_data(out, out+out_size)) == NULL) { /* error! not found */ _ftprintf(stderr, _T("Failed to find the boot manager compression signature in file '%s' - it must be a bootmgr file\n"), out_file); return -2; }
 	print_version(bm_data);
 	bm_data->uncompressed_size = in_size;
-	if ((out_data = (bytes)malloc(2*in_size)) == NULL) { /* error! */ _ftprintf(stderr, _T("Failed to allocate %u bytes for compression\n"), 2*in_size); return -3; }
+	if ((out_data = (bytes)malloc(2*in_size)) == NULL) { /* error! */ _ftprintf(stderr, _T("Failed to allocate %" PRIu_size_t " bytes for compression\n"), 2*in_size); return -3; }
 	if ((out_size = compress(get_format(bm_data), in, in_size, out_data, 2*in_size)) == 0) { /* error! */ _ftprintf(stderr, _T("Failed to compress data: %u\n"), errno); return -4; }
 	bm_data->compressed_size = out_size;
 	out_data[out_size++] = 0;

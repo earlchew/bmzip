@@ -34,6 +34,22 @@ typedef __int32 int32_t;
 typedef __int64 int64_t;
 #else
 #include <stdint.h>
+#include <wchar.h>
+#define wcscmp wcscmp_
+#define wcslen wcslen_
+static int wcscmp_(const wchar_t *lhs, const wchar_t *rhs) {
+    while (*lhs == *rhs) {
+        if (*lhs) return 0;
+        ++lhs, ++rhs;
+    }
+    return *lhs < *rhs ? -1 : +1;
+}
+static size_t wcslen_(const wchar_t *wcs) {
+    size_t len = 0;
+    while (wcs[len])
+        ++len;
+    return len;
+}
 #endif
 
 #include <stdlib.h>
@@ -43,12 +59,19 @@ typedef __int64 int64_t;
 #define ARRAYSIZE(a) sizeof(a)/sizeof(a[0])
 #endif
 
+static_assert(sizeof(wchar_t) == 2, "16 bit wchar_t required");
+
 template<unsigned int MULT> inline static size_t roundUpTo(size_t x) { size_t mod = x % MULT; return (mod == 0) ? x : (x + MULT - mod); }
 template<> inline size_t roundUpTo<2>(size_t x) { return (x + 1) & ~0x1; }
 template<> inline size_t roundUpTo<4>(size_t x) { return (x + 3) & ~0x3; }
 
+#ifdef _MSC_VER
 #pragma region Resource Finding Structures and Code
 #include "pshpack2.h"
+#endif
+#ifdef __GNUC__
+#pragma pack(push,2)
+#endif
 struct DOSHeader {      // IMAGE_DOS_HEADER - DOS .EXE header
 	const static uint16_t SIGNATURE = 0x5A4D; // MZ
 
@@ -72,7 +95,12 @@ struct DOSHeader {      // IMAGE_DOS_HEADER - DOS .EXE header
 	uint16_t e_res2[10]; // Reserved words
 	int32_t  e_lfanew;   // File address of new exe header
 };
+#ifdef __GNUC__
+#pragma pack(pop)
+#endif
+#ifdef _MSC_VER
 #include "poppack.h"
+#endif
 struct FileHeader { // IMAGE_FILE_HEADER
 	enum CharacteristicFlags : uint16_t { // IMAGE_FILE_* - FLAGS
 		RELOCS_STRIPPED           = 0x0001, // Relocation info stripped from file.
